@@ -21,10 +21,10 @@ const Page = () => {
     {
       plan: 'Free',
       tagline: 'Perfect for getting started.',
-      quota: 10,
+      quota: 7,
       features: [
         {
-          text: '5 pages per PDF',
+          text: '4 pages per PDF',
           footnote: 'Maximum number of pages per uploaded PDF.',
         },
         {
@@ -49,7 +49,7 @@ const Page = () => {
       quota: PLANS.find((p) => p.slug === 'pro')!.quota,
       features: [
         {
-          text: '25 pages per PDF',
+          text: '49 pages per PDF',
           footnote: 'Maximum number of pages per uploaded PDF.',
         },
         {
@@ -111,7 +111,7 @@ const Page = () => {
 
                     <div className='my-6 flex items-end justify-center gap-1'>
                       <span className='text-6xl font-extrabold'>
-                        ${price}
+                        ₹{price}
                       </span>
                       <span className='mb-2 text-gray-500'>
                         /month

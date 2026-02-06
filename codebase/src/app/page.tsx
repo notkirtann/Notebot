@@ -11,7 +11,7 @@ export default function Home() {
       <MaxWidthWrapper className='mb-12 mt-28 sm:mt-40 flex flex-col items-center justify-center text-center'>
         <div className='mx-auto mb-6 flex max-w-fit items-center justify-center rounded-full border border-gray-200 bg-white px-6 py-2 shadow-sm backdrop-blur'>
           <p className='text-sm font-semibold text-gray-700'>
-            🚀 Notebot is now public
+            😍 Notebot is now public 😍
           </p>
         </div>
 
