@@ -11,7 +11,11 @@ import { Toaster } from '@/components/ui/toaster'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata = constructMetadata()
+export const metadata = constructMetadata({
+  title: 'Notebot',
+  description:
+    'Notebot lets you chat with your PDF documents instantly. Upload files and get intelligent answers in seconds.',
+})
 
 export default function RootLayout({
   children,

@@ -8,19 +8,27 @@ const Page = async () => {
   const { getUser } = getKindeServerSession()
   const user = getUser()
 
-  if (!user || !user.id) redirect('/auth-callback?origin=dashboard')
+  if (!user || !user.id) {
+    redirect('/auth-callback?origin=dashboard')
+  }
 
   const dbUser = await db.user.findFirst({
     where: {
-      id: user.id
-    }
+      id: user.id,
+    },
   })
 
-  if(!dbUser) redirect('/auth-callback?origin=dashboard')
+  if (!dbUser) {
+    redirect('/auth-callback?origin=dashboard')
+  }
 
   const subscriptionPlan = await getUserSubscriptionPlan()
 
-  return <Dashboard subscriptionPlan={subscriptionPlan} />
+  return (
+    <div className='min-h-[calc(100vh-3.5rem)] bg-muted/40'>
+      <Dashboard subscriptionPlan={subscriptionPlan} />
+    </div>
+  )
 }
 
 export default Page

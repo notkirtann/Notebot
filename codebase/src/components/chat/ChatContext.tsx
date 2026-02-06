@@ -1,3 +1,5 @@
+'use client'
+
 import {
   ReactNode,
   createContext,
@@ -34,65 +36,58 @@ export const ChatContextProvider = ({
   fileId,
   children,
 }: Props) => {
-  const [message, setMessage] = useState<string>('')
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-
-  const utils = trpc.useContext()
-
-  const { toast } = useToast()
+  /* ----------------------------- State ----------------------------- */
+  const [message, setMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const backupMessage = useRef('')
+  const utils = trpc.useContext()
+  const { toast } = useToast()
 
+  /* --------------------------- Mutation ---------------------------- */
   const { mutate: sendMessage } = useMutation({
-    mutationFn: async ({
-      message,
-    }: {
-      message: string
-    }) => {
-      const response = await fetch('/api/message', {
+    mutationFn: async ({ message }: { message: string }) => {
+      const res = await fetch('/api/message', {
         method: 'POST',
-        body: JSON.stringify({
-          fileId,
-          message,
-        }),
+        body: JSON.stringify({ fileId, message }),
       })
 
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error('Failed to send message')
       }
 
-      return response.body
+      return res.body
     },
+
+    /**
+     * Optimistic update:
+     * 1. Cancel in-flight queries
+     * 2. Snapshot previous messages
+     * 3. Insert user message immediately
+     */
     onMutate: async ({ message }) => {
       backupMessage.current = message
       setMessage('')
 
-      // step 1 
       await utils.getFileMessages.cancel()
 
-      // step 2
       const previousMessages =
         utils.getFileMessages.getInfiniteData()
 
-      // step 3
       utils.getFileMessages.setInfiniteData(
         { fileId, limit: INFINITE_QUERY_LIMIT },
         (old) => {
           if (!old) {
-            return {
-              pages: [],
-              pageParams: [],
-            }
+            return { pages: [], pageParams: [] }
           }
 
-          let newPages = [...old.pages]
-
-          let latestPage = newPages[0]!
+          const newPages = [...old.pages]
+          const latestPage = newPages[0]!
 
           latestPage.messages = [
             {
-              createdAt: new Date().toISOString(),
               id: crypto.randomUUID(),
+              createdAt: new Date().toISOString(),
               text: message,
               isUserMessage: true,
             },
@@ -101,10 +96,7 @@ export const ChatContextProvider = ({
 
           newPages[0] = latestPage
 
-          return {
-            ...old,
-            pages: newPages,
-          }
+          return { ...old, pages: newPages }
         }
       )
 
@@ -113,86 +105,75 @@ export const ChatContextProvider = ({
       return {
         previousMessages:
           previousMessages?.pages.flatMap(
-            (page) => page.messages
+            (p) => p.messages
           ) ?? [],
       }
     },
+
+    /**
+     * Stream AI response chunk-by-chunk and
+     * progressively update the message text.
+     */
     onSuccess: async (stream) => {
       setIsLoading(false)
 
       if (!stream) {
         return toast({
-          title: 'There was a problem sending this message',
+          title: 'Message failed',
           description:
-            'Please refresh this page and try again',
+            'Please refresh the page and try again.',
           variant: 'destructive',
         })
       }
 
       const reader = stream.getReader()
       const decoder = new TextDecoder()
-      let done = false
 
-      // accumulated response
-      let accResponse = ''
+      let done = false
+      let accumulatedResponse = ''
 
       while (!done) {
         const { value, done: doneReading } =
           await reader.read()
         done = doneReading
-        const chunkValue = decoder.decode(value)
 
-        accResponse += chunkValue
+        accumulatedResponse += decoder.decode(value)
 
-        // append chunk to the actual message
         utils.getFileMessages.setInfiniteData(
           { fileId, limit: INFINITE_QUERY_LIMIT },
           (old) => {
             if (!old) return { pages: [], pageParams: [] }
 
-            let isAiResponseCreated = old.pages.some(
-              (page) =>
-                page.messages.some(
-                  (message) => message.id === 'ai-response'
-                )
+            const aiExists = old.pages.some((page) =>
+              page.messages.some(
+                (m) => m.id === 'ai-response'
+              )
             )
 
-            let updatedPages = old.pages.map((page) => {
-              if (page === old.pages[0]) {
-                let updatedMessages
+            const updatedPages = old.pages.map(
+              (page, idx) => {
+                if (idx !== 0) return page
 
-                if (!isAiResponseCreated) {
-                  updatedMessages = [
-                    {
-                      createdAt: new Date().toISOString(),
-                      id: 'ai-response',
-                      text: accResponse,
-                      isUserMessage: false,
-                    },
-                    ...page.messages,
-                  ]
-                } else {
-                  updatedMessages = page.messages.map(
-                    (message) => {
-                      if (message.id === 'ai-response') {
-                        return {
-                          ...message,
-                          text: accResponse,
-                        }
-                      }
-                      return message
-                    }
-                  )
-                }
+                const messages = aiExists
+                  ? page.messages.map((m) =>
+                      m.id === 'ai-response'
+                        ? { ...m, text: accumulatedResponse }
+                        : m
+                    )
+                  : [
+                      {
+                        id: 'ai-response',
+                        createdAt:
+                          new Date().toISOString(),
+                        text: accumulatedResponse,
+                        isUserMessage: false,
+                      },
+                      ...page.messages,
+                    ]
 
-                return {
-                  ...page,
-                  messages: updatedMessages,
-                }
+                return { ...page, messages }
               }
-
-              return page
-            })
+            )
 
             return { ...old, pages: updatedPages }
           }
@@ -200,28 +181,37 @@ export const ChatContextProvider = ({
       }
     },
 
+    /**
+     * Rollback optimistic update on error
+     */
     onError: (_, __, context) => {
       setMessage(backupMessage.current)
+
       utils.getFileMessages.setData(
         { fileId },
         { messages: context?.previousMessages ?? [] }
       )
     },
+
     onSettled: async () => {
       setIsLoading(false)
-
       await utils.getFileMessages.invalidate({ fileId })
     },
   })
 
+  /* --------------------------- Handlers ---------------------------- */
   const handleInputChange = (
     e: React.ChangeEvent<HTMLTextAreaElement>
   ) => {
     setMessage(e.target.value)
   }
 
-  const addMessage = () => sendMessage({ message })
+  const addMessage = () => {
+    if (!message.trim()) return
+    sendMessage({ message })
+  }
 
+  /* ---------------------------- Context ---------------------------- */
   return (
     <ChatContext.Provider
       value={{

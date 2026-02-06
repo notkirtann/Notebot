@@ -17,8 +17,9 @@ const Page = async ({ params }: PageProps) => {
   const { getUser } = getKindeServerSession()
   const user = getUser()
 
-  if (!user || !user.id)
+  if (!user || !user.id) {
     redirect(`/auth-callback?origin=dashboard/${fileid}`)
+  }
 
   const file = await db.file.findFirst({
     where: {
@@ -32,19 +33,22 @@ const Page = async ({ params }: PageProps) => {
   const plan = await getUserSubscriptionPlan()
 
   return (
-    <div className='flex-1 justify-between flex flex-col h-[calc(100vh-3.5rem)]'>
-      <div className='mx-auto w-full max-w-8xl grow lg:flex xl:px-2'>
-        {/* Left sidebar & main wrapper */}
-        <div className='flex-1 xl:flex'>
-          <div className='px-4 py-6 sm:px-6 lg:pl-8 xl:flex-1 xl:pl-6'>
-            {/* Main area */}
+    <div className='flex h-[calc(100vh-3.5rem)] flex-col bg-muted/40'>
+      <div className='mx-auto flex w-full max-w-[1600px] grow gap-0 lg:px-2'>
+        {/* PDF Section */}
+        <div className='flex flex-1 flex-col'>
+          <div className='h-full overflow-hidden rounded-none bg-background px-4 py-6 sm:px-6 lg:rounded-l-2xl lg:pl-8 xl:pl-6'>
             <PdfRenderer url={file.url} />
           </div>
         </div>
 
-        <div className='shrink-0 flex-[0.75] border-t border-gray-200 lg:w-96 lg:border-l lg:border-t-0'>
-          <ChatWrapper isSubscribed={plan.isSubscribed} fileId={file.id} />
-        </div>
+        {/* Chat Section */}
+        <aside className='flex w-full flex-col border-t border-border bg-background lg:w-[420px] lg:border-l lg:border-t-0 lg:rounded-r-2xl'>
+          <ChatWrapper
+            isSubscribed={plan.isSubscribed}
+            fileId={file.id}
+          />
+        </aside>
       </div>
     </div>
   )

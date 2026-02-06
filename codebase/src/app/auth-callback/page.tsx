@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { trpc } from '../_trpc/client'
@@ -6,14 +6,12 @@ import { Loader2 } from 'lucide-react'
 
 const Page = () => {
   const router = useRouter()
-
   const searchParams = useSearchParams()
   const origin = searchParams.get('origin')
 
   trpc.authCallback.useQuery(undefined, {
     onSuccess: ({ success }) => {
       if (success) {
-        // user is synced to db
         router.push(origin ? `/${origin}` : '/dashboard')
       }
     },
@@ -27,13 +25,18 @@ const Page = () => {
   })
 
   return (
-    <div className='w-full mt-24 flex justify-center'>
-      <div className='flex flex-col items-center gap-2'>
-        <Loader2 className='h-8 w-8 animate-spin text-zinc-800' />
-        <h3 className='font-semibold text-xl'>
-          Setting up your account...
+    <div className='flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-muted/40'>
+      <div className='flex flex-col items-center gap-3 rounded-2xl bg-background px-8 py-10 shadow-sm'>
+        <Loader2 className='h-9 w-9 animate-spin text-primary' />
+
+        <h3 className='text-xl font-semibold'>
+          Setting up your Notebot account
         </h3>
-        <p>You will be redirected automatically.</p>
+
+        <p className='max-w-xs text-center text-sm text-muted-foreground'>
+          We’re preparing your workspace. You’ll be redirected
+          automatically in just a moment.
+        </p>
       </div>
     </div>
   )
